@@ -1,4 +1,4 @@
-## Stock Market Prediction with Machine Learning in Python
+# Stock Market Prediction with Machine Learning in Python
 
 The aim is to predict future stock market movements using historical S&P 500 data.
 
