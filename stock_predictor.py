@@ -1,146 +1,132 @@
 # stock_predictor.py
 # Machine Learning Model for Stock Prices Predictor
-# Predicts if S&P 500 closing price will increase the next day.
+# Predicts if closing price will increase the next day using S&P 500 data.
+# Author: Assistant (Updated for robustness and deployment)
 
-import yfinance as yf
-import pandas as pd
-import numpy as np
 import os
+import logging
 import warnings
 from datetime import datetime
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# ML imports
+from sklearn.model_selection import TimeSeriesSplit, train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
-from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score, classification_report
+from sklearn.metrics import (precision_score, recall_score, f1_score, accuracy_score,
+                             confusion_matrix, roc_auc_score, classification_report)
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import joblib
+import yfinance as yf
 
-# Technical indicators
-import ta  # For RSI, MACD, Bollinger Bands
+# Technical indicators using pandas_ta (pure Python)
+import pandas_ta as ta
 
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 warnings.filterwarnings('ignore')
 sns.set_style('whitegrid')
 
-# Data fetching function with error handling and recent data
-def fetch_sp500_data(filename='sp500.csv', start_date='1950-01-01', end_date=datetime.now().strftime('%Y-%m-%d')):
+# Configuration
+TICKER = "^GSPC"  # S&P 500
+START_DATE = '1990-01-01'
+END_DATE = datetime.now().strftime('%Y-%m-%d')
+DATA_FILE = 'sp500.csv'
+MODEL_FILE = 'stock_predictor_model.pkl'
+PLOT_DIR = 'plots'
+THRESHOLD = 0.6  # Probability threshold for predictions
+
+# Create plot directory
+os.makedirs(PLOT_DIR, exist_ok=True)
+
+def fetch_stock_data(ticker=TICKER, filename=DATA_FILE, start=START_DATE, end=END_DATE):
+    """Fetch and cache stock data using yfinance."""
     if os.path.exists(filename):
         df = pd.read_csv(filename, index_col=0, parse_dates=True)
-        print(f"Loaded data from {filename}")
+        logging.info(f"Loaded data from {filename}")
     else:
         try:
-            ticker = yf.Ticker("^GSPC")
-            df = ticker.history(start=start_date, end=end_date)
+            stock = yf.Ticker(ticker)
+            df = stock.history(start=start, end=end)
             if df.empty:
-                raise ValueError("No data fetched. Check internet connection or ticker symbol.")
+                raise ValueError(f"No data fetched for {ticker}. Check connection or dates.")
             df.to_csv(filename)
-            print(f"Downloaded and saved data to {filename}")
+            logging.info(f"Downloaded and saved data for {ticker} to {filename}")
         except Exception as e:
-            print(f"Error fetching data: {e}")
+            logging.error(f"Error fetching data: {e}")
             raise
     return df
 
-# Feature Engineering: Basic + Technical Indicators
+def prepare_data(df):
+    """Clean and prepare data: create target and basic features."""
+    # Clean columns
+    df.drop(['Dividends', 'Stock Splits'], axis=1, inplace=True, errors='ignore')
+    
+    # Create target: 1 if next close > current close
+    df['Tomorrow'] = df['Close'].shift(-1)
+    df['Target'] = (df['Tomorrow'] > df['Close']).astype(int)
+    
+    # Slice from start date and drop NaNs
+    df = df.loc[START_DATE:].copy()
+    df.dropna(subset=['Target'], inplace=True)
+    
+    if len(df) < 1000:
+        raise ValueError("Insufficient data after cleaning. Need at least 1000 rows.")
+    
+    logging.info(f"Data prepared: {len(df)} rows")
+    return df
+
 def add_technical_indicators(df):
+    """Add advanced technical indicators using pandas_ta."""
     # Basic features
     df['Returns'] = df['Close'].pct_change()
     df['High_Low_Ratio'] = df['High'] / df['Low']
     df['Open_Close_Ratio'] = df['Close'] / df['Open']
     
-    # Moving averages and ratios
+    # Moving averages and ratios/trends
     horizons = [2, 5, 20, 60, 250]
-    for horizon in horizons:
-        df[f'Close_MA_{horizon}'] = df['Close'].rolling(horizon).mean()
-        df[f'Close_Ratio_{horizon}'] = df['Close'] / df[f'Close_MA_{horizon}']
-        df[f'Trend_{horizon}'] = df['Target'].shift(1).rolling(horizon).sum()
+    for h in horizons:
+        df[f'Close_MA_{h}'] = df['Close'].rolling(h).mean()
+        df[f'Close_Ratio_{h}'] = df['Close'] / df[f'Close_MA_{h}']
+        df[f'Trend_{h}'] = df['Target'].shift(1).rolling(h).sum()
     
-    # RSI (Relative Strength Index)
-    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
+    # RSI
+    df['RSI'] = ta.rsi(df['Close'], length=14)
     
     # MACD
-    macd = ta.trend.MACD(df['Close'])
-    df['MACD'] = macd.macd()
-    df['MACD_Signal'] = macd.macd_signal()
+    macd = ta.macd(df['Close'])
+    df['MACD'] = macd['MACD_12_26_9']
+    df['MACD_Signal'] = macd['MACDs_12_26_9']
     
     # Bollinger Bands
-    bb = ta.volatility.BollingerBands(df['Close'], window=20)
-    df['BB_High'] = bb.bollinger_hband()
-    df['BB_Low'] = bb.bollinger_lband()
+    bb = ta.bbands(df['Close'], length=20)
+    df['BB_High'] = bb['BBU_20_2.0']
+    df['BB_Low'] = bb['BBL_20_2.0']
     df['BB_Position'] = (df['Close'] - df['BB_Low']) / (df['BB_High'] - df['BB_Low'])
     
-    # Volume indicators
+    # Volume ratio
     df['Volume_MA_20'] = df['Volume'].rolling(20).mean()
     df['Volume_Ratio'] = df['Volume'] / df['Volume_MA_20']
     
+    # Drop any new NaNs
+    df.dropna(inplace=True)
+    
+    logging.info(f"Technical indicators added: {len(df)} rows remaining")
     return df
 
-# Enhanced Predict Function with Probability Threshold
-def predict(train, test, predictors, model, threshold=0.6):
-    model.fit(train[predictors], train['Target'])
-    probs = model.predict_proba(test[predictors])[:, 1]
-    preds = (probs >= threshold).astype(int)
-    preds_series = pd.Series(preds, index=test.index, name='Predictions')
-    combined = pd.concat([test['Target'], preds_series, pd.Series(probs, index=test.index, name='Probs')], axis=1)
-    return combined
-
-# Enhanced Backtest with Time Series Split
-def backtest(data, model, predictors, start=2500, step=250, threshold=0.6):
-    all_predictions = []
-    
-    for i in range(start, len(data), step):
-        train = data.iloc[:i].copy()
-        test = data.iloc[i:i+step].copy()
-        predictions = predict(train, test, predictors, model, threshold)
-        all_predictions.append(predictions)
-    
-    return pd.concat(all_predictions)
-
-# Main execution
-if __name__ == "__main__":
-    # Step 1: Fetch and prepare data
-    print("Fetching S&P 500 data...")
-    sp500 = fetch_sp500_data()
-    sp500.index = pd.to_datetime(sp500.index)
-    
-    # Clean data
-    sp500.drop(['Dividends', 'Stock Splits'], axis=1, inplace=True, errors='ignore')
-    sp500['Tomorrow'] = sp500['Close'].shift(-1)
-    sp500['Target'] = (sp500['Tomorrow'] > sp500['Close']).astype(int)
-    sp500 = sp500.loc['1990-01-01':].copy()
-    sp500.dropna(subset=['Target'], inplace=True)
-    
-    print(f"Data shape after cleaning: {sp500.shape}")
-    print(sp500.head())
-    
-    # Step 2: Plot closing price
-    plt.figure(figsize=(14, 7))
-    sp500['Close'].plot(title='S&P 500 Closing Price Over Time')
-    plt.ylabel('Price')
-    plt.xlabel('Date')
-    plt.show()
-    
-    # Step 3: Add technical indicators
-    print("Adding technical indicators...")
-    sp500 = add_technical_indicators(sp500)
-    sp500.dropna(inplace=True)
-    print(f"Data shape after features: {sp500.shape}")
-    print(sp500.head())
-    
-    # Step 4: Define predictors
+def get_predictors(df):
+    """Define list of predictor columns."""
     predictors = ['Close', 'Volume', 'Open', 'High', 'Low', 'Returns', 'High_Low_Ratio', 'Open_Close_Ratio']
-    predictors += [col for col in sp500.columns if any(ind in col for ind in ['Close_Ratio_', 'Trend_', 'RSI', 'MACD', 'BB_', 'Volume_Ratio'])]
-    
-    print(f"Number of predictors: {len(predictors)}")
-    print("Sample predictors:", predictors[:10])  # Show first 10
-    
-    # Step 5: Model Pipeline and Hyperparameter Tuning
-    print("Training model with hyperparameter tuning...")
+    indicators = [col for col in df.columns if any(ind in col for ind in ['Close_Ratio_', 'Trend_', 'RSI', 'MACD', 'BB_', 'Volume_Ratio'])]
+    predictors.extend(indicators)
+    return [p for p in predictors if p in df.columns]  # Ensure all exist
+
+def train_model(X, y):
+    """Train model with pipeline and hyperparameter tuning using time series CV."""
     pipeline = Pipeline([
         ('scaler', StandardScaler()),
-        ('classifier', RandomForestClassifier(random_state=1))
+        ('classifier', RandomForestClassifier(random_state=1, n_jobs=-1))
     ])
     
     param_grid = {
@@ -149,74 +135,190 @@ if __name__ == "__main__":
         'classifier__max_depth': [10, 20, None]
     }
     
+    # Time series split for CV
     tscv = TimeSeriesSplit(n_splits=5)
     grid_search = GridSearchCV(pipeline, param_grid, cv=tscv, scoring='precision', n_jobs=-1, verbose=1)
     
-    X = sp500[predictors]
-    y = sp500['Target']
     grid_search.fit(X, y)
     
-    model = grid_search.best_estimator_
-    print(f"Best parameters: {grid_search.best_params_}")
-    print(f"Best CV Precision: {grid_search.best_score_:.4f}")
+    logging.info(f"Best parameters: {grid_search.best_params_}")
+    logging.info(f"Best CV Precision: {grid_search.best_score_:.4f}")
     
     # Save model
-    joblib.dump(model, 'stock_predictor_model.pkl')
-    print("Model saved as 'stock_predictor_model.pkl'")
+    joblib.dump(grid_search.best_estimator_, MODEL_FILE)
+    logging.info(f"Model saved to {MODEL_FILE}")
     
-    # Step 6: Run backtest
-    print("Running backtest...")
-    predictions = backtest(sp500, model, predictors, threshold=0.6)
-    print(predictions.head())
+    return grid_search.best_estimator_
+
+def backtest(data, model, predictors, start=2500, step=250, threshold=THRESHOLD):
+    """Rolling window backtest."""
+    all_preds = []
+    max_idx = len(data)
     
-    # Step 7: Evaluation
-    y_true = predictions['Target']
-    y_pred = predictions['Predictions']
-    y_prob = predictions['Probs']
+    for i in range(start, max_idx, step):
+        end_i = min(i + step, max_idx)
+        train = data.iloc[:i]
+        test = data.iloc[i:end_i]
+        
+        if len(train) < 100 or len(test) < 10:  # Skip if insufficient data
+            continue
+        
+        model.fit(train[predictors], train['Target'])
+        probs = model.predict_proba(test[predictors])[:, 1]
+        preds = (probs >= threshold).astype(int)
+        
+        pred_df = pd.DataFrame({
+            'Target': test['Target'],
+            'Predictions': preds,
+            'Probs': probs
+        }, index=test.index)
+        
+        all_preds.append(pred_df)
     
-    print("\nClassification Report:")
+    if not all_preds:
+        raise ValueError("Backtest failed: No valid windows found.")
+    
+    return pd.concat(all_preds)
+
+def evaluate_model(y_true, y_pred, y_prob):
+    """Compute and print evaluation metrics."""
+    print("\n=== Model Evaluation ===")
     print(classification_report(y_true, y_pred))
     
-    print(f"Precision: {precision_score(y_true, y_pred):.4f}")
-    print(f"Recall: {recall_score(y_true, y_pred):.4f}")
-    print(f"F1-Score: {f1_score(y_true, y_pred):.4f}")
-    print(f"ROC-AUC: {roc_auc_score(y_true, y_prob):.4f}")
+    metrics = {
+        'Precision': precision_score(y_true, y_pred),
+        'Recall': recall_score(y_true, y_pred),
+        'F1-Score': f1_score(y_true, y_pred),
+        'Accuracy': accuracy_score(y_true, y_pred),
+        'ROC-AUC': roc_auc_score(y_true, y_prob)
+    }
     
-    # Confusion Matrix
+    for name, score in metrics.items():
+        print(f"{name}: {score:.4f}")
+    
+    # Confusion Matrix Plot
     cm = confusion_matrix(y_true, y_pred)
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Down', 'Up'], yticklabels=['Down', 'Up'])
     plt.title('Confusion Matrix')
     plt.ylabel('True Label')
     plt.xlabel('Predicted Label')
+    plt.savefig(os.path.join(PLOT_DIR, 'confusion_matrix.png'), dpi=300, bbox_inches='tight')
     plt.show()
     
-    # Step 8: Plot Predictions Over Time
+    return metrics
+
+def plot_predictions(predictions):
+    """Plot actual vs predicted over time."""
     plt.figure(figsize=(14, 7))
     predictions[['Target', 'Predictions']].plot(title='Actual vs Predicted Targets Over Time')
     plt.ylabel('Target (1=Up, 0=Down)')
     plt.xlabel('Date')
     plt.legend(['Actual', 'Predicted'])
+    plt.savefig(os.path.join(PLOT_DIR, 'predictions_over_time.png'), dpi=300, bbox_inches='tight')
     plt.show()
+
+def plot_feature_importance(model, predictors):
+    """Plot top feature importances."""
+    try:
+        importances = model.named_steps['classifier'].feature_importances_
+    except:
+        importances = model.feature_importances_
     
-    # Step 9: Feature Importance
-    importances = model.named_steps['classifier'].feature_importances_
     feature_imp = pd.Series(importances, index=predictors).sort_values(ascending=False)
     
     plt.figure(figsize=(10, 8))
     feature_imp.head(10).plot(kind='barh')
     plt.title('Top 10 Feature Importances')
     plt.xlabel('Importance')
+    plt.tight_layout()
+    plt.savefig(os.path.join(PLOT_DIR, 'feature_importance.png'), dpi=300, bbox_inches='tight')
     plt.show()
+
+def predict_latest(model, data, predictors, n_days=5, threshold=THRESHOLD):
+    """Predict on the latest n_days of data."""
+    if len(data) < n_days + 100:
+        logging.warning("Insufficient data for latest predictions.")
+        return None
     
-    # Step 10: Prediction on Latest Data (last 5 days)
-    if len(sp500) >= 5:
-        latest_data = sp500.tail(5)
-        train_data = sp500.iloc[:-5]
-        latest_predictions = predict(train_data, latest_data, predictors, model, threshold=0.6)
-        print("\nLatest Predictions (Last 5 Days):")
-        print(latest_predictions)
-    else:
-        print("Not enough data for latest predictions.")
+    train = data.iloc[-(n_days + 100):-n_days]
+    test = data.tail(n_days)
     
-    print("\nScript completed successfully!")
+    model.fit(train[predictors], train['Target'])
+    probs = model.predict_proba(test[predictors])[:, 1]
+    preds = (probs >= threshold).astype(int)
+    
+    latest_df = pd.DataFrame({
+        'Target': test['Target'],
+        'Predictions': preds,
+        'Probs': probs,
+        'Close': test['Close']
+    }, index=test.index)
+    
+    logging.info("Latest Predictions (Last 5 Days):")
+    print(latest_df)
+    return latest_df
+
+def plot_closing_price(df):
+    """Plot historical closing price."""
+    plt.figure(figsize=(14, 7))
+    df['Close'].plot(title=f'{TICKER} Closing Price Over Time')
+    plt.ylabel('Price ($)')
+    plt.xlabel('Date')
+    plt.savefig(os.path.join(PLOT_DIR, 'closing_price.png'), dpi=300, bbox_inches='tight')
+    plt.show()
+
+def main():
+    """Main execution function."""
+    try:
+        # Step 1: Fetch data
+        logging.info("Starting stock predictor pipeline...")
+        df = fetch_stock_data()
+        
+        # Step 2: Prepare data
+        df = prepare_data(df)
+        plot_closing_price(df)
+        
+        # Step 3: Add features
+        df = add_technical_indicators(df)
+        
+        # Step 4: Get predictors
+        predictors = get_predictors(df)
+        logging.info(f"Using {len(predictors)} predictors")
+        
+        # Step 5: Prepare X, y and split for final eval
+        X = df[predictors]
+        y = df['Target']
+        
+        # Time-based split (80% train, 20% test)
+        split_idx = int(len(df) * 0.8)
+        X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
+        y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
+        
+        # Step 6: Train model
+        model = train_model(X_train, y_train)
+        
+        # Step 7: Backtest on full data (excluding last test set for fairness)
+        backtest_data = df.iloc[:split_idx]
+        predictions = backtest(backtest_data, model, predictors)
+        
+        # Step 8: Evaluate on held-out test set
+        test_predictions = predict(pd.concat([backtest_data, X_test]), pd.DataFrame(X_test, index=X_test.index).join(y_test), predictors, model)
+        metrics = evaluate_model(test_predictions['Target'], test_predictions['Predictions'], test_predictions['Probs'])
+        
+        # Step 9: Plots
+        plot_predictions(predictions)
+        plot_feature_importance(model, predictors)
+        
+        # Step 10: Latest predictions
+        predict_latest(model, df, predictors)
+        
+        logging.info("Pipeline completed successfully!")
+        logging.info(f"Plots saved to '{PLOT_DIR}' folder.")
+        
+    except Exception as e:
+        logging.error(f"Pipeline failed: {e}")
+        raise
+
+if __name__ == "__main__":
+    main()
