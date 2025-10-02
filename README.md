@@ -113,8 +113,8 @@ streamlit run app.py
 
 📸 **Streamlit UI Screenshot**:
 ![Streamlit UI](screenshots/streamlit_ui(1).png)
-*(Displays table of predictions + closing price chart)*
 ![Streamlit UI](screenshots/streamlit_ui(2).png)
+*(Displays table of predictions + closing price chart)*
 ![Streamlit UI](screenshots/streamlit_ui(3).png)
 ![Streamlit UI](screenshots/streamlit_ui(4).png)
 
