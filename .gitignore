@@ -34,7 +34,6 @@ build/
 *.sublime-workspace
 
 # ---------------- ML Model / Binary Files ---------------- #
-*.pkl
 *.joblib
 *.h5
 
