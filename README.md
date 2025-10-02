@@ -39,7 +39,7 @@ stock-predictor/
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/your-username/stock-predictor.git
+git clone https://github.com/Sagarika311/stock-predictor.git
 cd stock-predictor
 pip install -r requirements.txt
 ```
@@ -154,3 +154,10 @@ Alternative hosting: **Render** or **Heroku** for Flask/FastAPI APIs.
 
 ⚠️ **For educational purposes only.**
 This project **does not constitute financial advice**. Predictions are experimental and **should not be used for real trading decisions**.
+
+---
+
+## 👩‍💻 Author
+
+**Sagarika Bhagat**
+GitHub: [Sagarika311](https://github.com/Sagarika311)
