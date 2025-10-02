@@ -111,12 +111,18 @@ python predict_new.py
 streamlit run app.py
 ```
 
-📸 **Streamlit UI Screenshot**:
-![Streamlit UI](screenshots/streamlit_ui(1).png)
-![Streamlit UI](screenshots/streamlit_ui(2).png)
-*(Displays table of predictions + closing price chart)*
-![Streamlit UI](screenshots/streamlit_ui(3).png)
-![Streamlit UI](screenshots/streamlit_ui(4).png)
+### 📸 Streamlit UI Screenshots
+
+Interactive UI preview of the app:
+
+<div align="center">
+  <img src="screenshots/streamlit_ui (1).png" alt="Streamlit UI 1" width="300" style="margin:5px"/>
+  <img src="screenshots/streamlit_ui (2).png" alt="Streamlit UI 2" width="300" style="margin:5px"/>
+  <img src="screenshots/streamlit_ui (3).png" alt="Streamlit UI 3" width="300" style="margin:5px"/>
+  <img src="screenshots/streamlit_ui (4).png" alt="Streamlit UI 4" width="300" style="margin:5px"/>
+</div>
+
+*Shows tables of predictions, closing price charts, and interactive controls for exploring different tickers and prediction horizons.*
 
 ---
 
