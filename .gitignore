@@ -1,0 +1,47 @@
+# ---------------- Python ---------------- #
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ---------------- Virtual Env ---------------- #
+stock_env/
+venv/
+env/
+ENV/
+.stock_env/
+.venv/
+.env/
+
+# ---------------- Jupyter Notebook ---------------- #
+.ipynb_checkpoints
+
+# ---------------- Python Packages / Build ---------------- #
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.whl
+
+# ---------------- Logs ---------------- #
+*.log
+*.out
+
+# ---------------- IDE / Editor ---------------- #
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ---------------- ML Model / Binary Files ---------------- #
+*.pkl
+*.joblib
+*.h5
+
+# ---------------- Streamlit ---------------- #
+.streamlit/
+
+# ---------------- OS Files ---------------- #
+.DS_Store
+Thumbs.db
+desktop.ini
