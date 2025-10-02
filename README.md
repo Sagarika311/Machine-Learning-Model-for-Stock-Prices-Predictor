@@ -175,3 +175,132 @@ This project **does not constitute financial advice**. Predictions are experimen
 
 **Sagarika Bhagat**
 GitHub: [Sagarika311](https://github.com/Sagarika311)
+
+## 📊 Portfolio Summary Script (`portfolio_summary.py`)
+
+`portfolio_summary.py` provides a **comprehensive visual summary** of your stock prediction model for a given ticker. It combines historical prices, feature importance, and recent predictions into an easy-to-interpret set of plots.
+
+### 🔹 Features
+
+* Loads the **trained model** and associated predictors.
+* Fetches the **latest stock data** from Yahoo Finance (or uses cached CSV data).
+* Computes **technical indicators**: moving averages, RSI, MACD, Bollinger Bands, etc.
+* Plots **historical closing prices** for context.
+* Visualizes **feature importance** to see which indicators influence predictions most.
+* Predicts **next N days** of stock movement (Up/Down).
+* Generates a **combined summary figure** showing closing price, feature importance, and latest predictions.
+
+### ⚙️ How to Run
+
+1. Ensure your Python environment has the required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Make sure the **trained model** exists:
+
+```bash
+python stock_predictor.py
+```
+
+3. Run the portfolio summary:
+
+```bash
+python portfolio_summary.py
+```
+
+4. Check the **plots folder** for outputs:
+
+* Historical closing price: `closing_price.png`
+* Feature importance: `feature_importance.png`
+* Latest predictions: `predictions_<TICKER>_latest_<N>_days.png`
+* Combined summary figure: `<TICKER>_summary.png`
+
+### 🔹 Customization
+
+* Change the ticker or number of days to predict by editing:
+
+```python
+TICKER = "^GSPC"  # Example: "^GSPC" or "AAPL"
+N_DAYS = 5        # Number of latest days to predict
+```
+
+* All plots are **saved locally** in the `plots/` folder.
+
+### ⚠️ Notes
+
+* This script is **offline-ready** once CSV datasets and trained models exist.
+* Provides **visual insights** into model behavior and predictions — ideal for portfolio analysis and reporting.
+
+---
+
+## 📄 Portfolio Report Script (`portfolio_report.py`)
+
+`portfolio_report.py` generates a **comprehensive PDF report** summarizing your stock prediction model’s performance and insights for a given ticker. It combines historical price charts, feature importance, predictions, and evaluation metrics into a single, easy-to-share PDF.
+
+### 🔹 Features
+
+* Loads the **trained RandomForest model** and associated predictors.
+* Fetches the **latest stock data**.
+* Computes **technical indicators** such as moving averages, RSI, MACD, Bollinger Bands, etc.
+* Plots:
+
+  * Historical closing prices
+  * Feature importance of predictors
+  * Latest predictions for the next N trading days
+* Evaluates the model on the **last 20% of data** and reports metrics (accuracy, precision, recall, etc.).
+* Compiles all visuals and metrics into a **PDF report** for easy sharing or portfolio analysis.
+
+### ⚙️ How to Run
+
+1. Ensure your Python environment has the required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+2. Make sure the **trained model** exists:
+
+```bash
+python stock_predictor.py
+```
+
+3. Run the portfolio report script:
+
+```bash
+python portfolio_report.py
+```
+
+4. The **PDF report** will be saved in the `plots/` directory:
+
+```text
+plots/<TICKER>_portfolio_report.pdf
+```
+
+### 🔹 Customization
+
+* Change the ticker or number of days to predict:
+
+```python
+TICKER = "^GSPC"  # Example: "^GSPC" or "AAPL"
+N_DAYS = 5        # Number of latest days to predict
+```
+
+* Modify the **model evaluation split** or thresholds directly in the script if needed.
+
+### ⚠️ Notes
+
+* The script automatically generates and saves plots for the PDF report.
+
+* The PDF includes:
+
+  * Historical closing price chart
+  * Feature importance chart
+  * Latest predictions chart
+  * Model evaluation metrics table
+
+* Ideal for **portfolio reporting**, performance review, or sharing predictive insights with stakeholders.
+
+---
+
