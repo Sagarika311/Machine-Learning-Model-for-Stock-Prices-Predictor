@@ -3,6 +3,8 @@
 **Predict the next day’s stock price movement** (Up/Down) using historical data and machine learning.
 Built with **Python**, **scikit-learn**, **yFinance**, and **technical indicators**, featuring an **interactive Streamlit app** for exploration and visualization.
 
+(This project builds a machine learning pipeline to predict future stock market movements using historical S&P 500 data. It covers the full workflow—from data acquisition with yfinance, preprocessing, and feature engineering to model training with Random Forests and backtesting.)
+
 ---
 
 ## 🔑 Key Features
