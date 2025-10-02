@@ -115,12 +115,17 @@ streamlit run app.py
 
 Interactive UI preview of the app:
 
-<div align="center">
-  <img src="screenshots/streamlit_ui (1).png" alt="Streamlit UI 1" width="300" style="margin:5px"/>
-  <img src="screenshots/streamlit_ui (2).png" alt="Streamlit UI 2" width="300" style="margin:5px"/>
-  <img src="screenshots/streamlit_ui (3).png" alt="Streamlit UI 3" width="300" style="margin:5px"/>
-  <img src="screenshots/streamlit_ui (4).png" alt="Streamlit UI 4" width="300" style="margin:5px"/>
-</div>
+**Streamlit UI - View 1**
+![Streamlit UI 1](screenshots/streamlit_ui%20\(1\).png)
+
+**Streamlit UI - View 2**
+![Streamlit UI 2](screenshots/streamlit_ui%20\(2\).png)
+
+**Streamlit UI - View 3**
+![Streamlit UI 3](screenshots/streamlit_ui%20\(3\).png)
+
+**Streamlit UI - View 4**
+![Streamlit UI 4](screenshots/streamlit_ui%20\(4\).png)
 
 *Shows tables of predictions, closing price charts, and interactive controls for exploring different tickers and prediction horizons.*
 
