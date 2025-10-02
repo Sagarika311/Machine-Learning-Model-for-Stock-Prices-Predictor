@@ -1,19 +1,19 @@
 # 📈 Stock Price Direction Predictor
 
-A **machine learning project** that predicts whether the **next day’s closing price** of a stock/index will go **Up or Down**.
-Built using **Python, scikit-learn, yFinance, and technical indicators**, with an interactive **Streamlit app** for easy exploration.
+**Predict the next day’s stock price movement** (Up/Down) using historical data and machine learning.
+Built with **Python**, **scikit-learn**, **yFinance**, and **technical indicators**, featuring an **interactive Streamlit app** for exploration and visualization.
 
 ---
 
-## 🔑 Features
+## 🔑 Key Features
 
-* Fetches real historical data from **Yahoo Finance** (fallback to dummy data if offline).
-* Implements technical indicators **manually** (RSI, MACD, Bollinger Bands, moving averages, etc.).
-* Handles **time-series cross-validation** (avoiding lookahead bias).
-* Trains a **Random Forest Classifier** with grid search for hyperparameter tuning.
-* Produces detailed **evaluation metrics** (precision, recall, F1, ROC-AUC, confusion matrix).
-* Backtests predictions over historical data.
-* Interactive **Streamlit app** for trying different tickers.
+* Fetches historical stock data from **Yahoo Finance** or cached CSV.
+* Computes **technical indicators manually** (RSI, MACD, Bollinger Bands, moving averages, etc.).
+* Applies **time-series aware training** (avoiding lookahead bias).
+* Trains a **Random Forest Classifier** with **grid search hyperparameter tuning**.
+* Provides **evaluation metrics**: precision, recall, F1-score, ROC-AUC, and confusion matrix.
+* Supports **backtesting** over historical data to validate performance.
+* Interactive **Streamlit app** for experimenting with tickers and prediction horizons.
 
 ---
 
@@ -21,12 +21,14 @@ Built using **Python, scikit-learn, yFinance, and technical indicators**, with a
 
 ```
 stock-predictor/
-├── stock_predictor.py       # Main ML pipeline
-├── app.py                   # Streamlit web app
-├── requirements.txt         # Dependencies
-├── sp500.csv                # Cached S&P 500 data (auto-downloaded)
+├── stock_predictor.py        # Main ML pipeline
+├── predict_new.py            # Predict recent/new data
+├── app.py                    # Streamlit web app
+├── requirements.txt          # Python dependencies
+├── sp500.csv                 # Cached S&P 500 data
 ├── stock_predictor_model.pkl # Saved trained model
-├── plots/                   # Generated plots (confusion matrix, feature importance, etc.)
+├── plots/                    # Generated plots (feature importance, confusion matrix, etc.)
+├── screenshots/              # Streamlit UI screenshots
 └── README.md
 ```
 
@@ -34,7 +36,7 @@ stock-predictor/
 
 ## ⚙️ Installation
 
-Clone the repo and install requirements:
+Clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/your-username/stock-predictor.git
@@ -46,18 +48,21 @@ pip install -r requirements.txt
 
 ## ▶️ Usage
 
-### 1. Run the pipeline script
+### 1. Run the ML pipeline
 
 ```bash
 python stock_predictor.py
 ```
 
-* Downloads stock data (default: **S&P 500**).
-* Trains model, evaluates, backtests.
-* Saves plots in `/plots`.
-* Saves trained model as `stock_predictor_model.pkl`.
+This will:
 
-Example output (Test Set Evaluation):
+* Fetch historical stock data (default: **S&P 500**) or use cached CSV.
+* Train the model and evaluate its performance.
+* Backtest predictions on historical data.
+* Save plots in `/plots`.
+* Save the trained model as `stock_predictor_model.pkl`.
+
+**Sample Test Set Metrics:**
 
 ```
 Precision: 0.68
@@ -67,55 +72,85 @@ Accuracy:  0.62
 ROC-AUC:   0.65
 ```
 
-### 2. Launch the Streamlit app
+---
+
+### 2. Quick Predictions on Recent Data
+
+Use `predict_new.py` to generate predictions for the **last N days** without running the full pipeline:
+
+```bash
+python predict_new.py
+```
+
+* Default: predicts for the **last 5 trading days**.
+* Outputs a table with:
+
+  * Date
+  * Closing Price
+  * Predicted Direction (Up/Down)
+  * Probability of an Up day
+
+**Example Output:**
+
+```
+ Date       Close  Predictions  Probability_Up
+2025-09-26  4500        1           0.78
+2025-09-27  4525        0           0.43
+2025-09-28  4510        1           0.65
+2025-09-29  4528        1           0.81
+2025-09-30  4540        0           0.55
+```
+
+*Note: Model must exist (`stock_predictor_model.pkl`). Otherwise, run `stock_predictor.py` first.*
+
+---
+
+### 3. Launch the interactive Streamlit app
 
 ```bash
 streamlit run app.py
 ```
 
-Try different tickers (e.g., AAPL, TSLA) and see predictions for the latest days:
-
-📸 **Screenshot Placeholder**:
-*(Insert Streamlit UI screenshot here — table of predictions + closing price chart)*
+📸 **Streamlit UI Screenshot**:
+![Streamlit UI](screenshots/streamlit_ui.png)
+*(Displays table of predictions + closing price chart)*
 
 ---
 
 ## 📊 Example Outputs
 
-Confusion Matrix:
-📸 *[insert confusion matrix plot here]*
+**Confusion Matrix**
+![Confusion Matrix](plots/confusion_matrix_test_set.png)
 
-Feature Importance:
-📸 *[insert feature importance plot here]*
+**Feature Importance**
+![Feature Importance](plots/feature_importance.png)
 
-Closing Price Trend:
-📸 *[insert closing price chart here]*
+**Closing Price Trend**
+![Closing Price Trend](plots/closing_price.png)
 
 ---
 
 ## 🚀 Deployment
 
-You can deploy the app for free using **Streamlit Cloud**:
+Deploy easily using **Streamlit Cloud**:
 
-* Push this repo to GitHub.
-* Go to [share.streamlit.io](https://share.streamlit.io/), connect your repo, and deploy.
+1. Push your repo to GitHub.
+2. Visit [share.streamlit.io](https://share.streamlit.io/), connect your repo, and deploy.
 
-Alternative: Host with **Render** or **Heroku** if you prefer Flask/FastAPI APIs.
+Alternative hosting: **Render** or **Heroku** for Flask/FastAPI APIs.
 
 ---
 
 ## 🔮 Future Improvements
 
-* Add support for **multiple ML models** (XGBoost, CatBoost, LSTMs).
-* Extend backtest with **portfolio/trading strategy simulation**.
-* Add more features (fundamental indicators, sentiment analysis).
-* Deploy a **live daily predictor** (cron job + auto email/Telegram alerts).
+* Add support for additional ML models (XGBoost, CatBoost, LSTM).
+* Enhance backtesting with **portfolio/trading strategy simulation**.
+* Integrate **fundamental analysis** and **sentiment indicators**.
+* Deploy a **live daily predictor** (cron job with email/Telegram alerts).
 
 ---
 
 ## 📌 Disclaimer
 
-⚠️ This project is for **educational purposes only**.
-It is **not financial advice**. Predictions are experimental and should not be used for real trading decisions.
-
-
+⚠️ **For educational purposes only.**
+This project **does not constitute financial advice**. Predictions are experimental and **should not be used for real trading decisions**.
