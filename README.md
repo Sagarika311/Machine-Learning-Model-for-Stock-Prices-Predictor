@@ -173,8 +173,10 @@ This project **does not constitute financial advice**. Predictions are experimen
 
 ## 👩‍💻 Author
 
-**Sagarika Bhagat**
+**Sagarika**
 GitHub: [Sagarika311](https://github.com/Sagarika311)
+
+---
 
 ## 📊 Portfolio Summary Script (`portfolio_summary.py`)
 
